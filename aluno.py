@@ -3,6 +3,7 @@ import csv
 import urllib.request
 from urllib.error import URLError
 from publicacao import Publicacao
+import pandas as pd
 
 class Aluno:
     def __init__(self, dados):
@@ -45,31 +46,6 @@ class Aluno:
         self.manter_vinculo_empregaticio = dados['Você manteria vínculo empregatício durante a execução do curso?']
         self.interesse_bolsa_programa = dados['Você tem interesse em concorrer a uma bolsa do programa?']
         self.projeto_doutorado_pdf = dados['Enviar arquivo PDF contendo o Projeto de Doutorado e Memorial Acadêmico, conforme especificado no edital.']
-        """ self.titulo_publicacao_1 = dados['Título da publicação']
-        self.local_publicacao_1 = dados['Local de publicação']
-        self.tipo_publicacao_1 = dados['Tipo da publicação']
-        self.qualis_publicacao_1 = dados['Qualis do local de publicação']
-        self.comprovacao_publicacao_1 = dados['Comprovação de publicação ou aceite de publicação (PDF)']
-        self.titulo_publicacao_2 = dados['Título da publicação']
-        self.local_publicacao_2 = dados['Local de publicação']
-        self.tipo_publicacao_2 = dados['Tipo da publicação']
-        self.qualis_publicacao_2 = dados['Qualis do local de publicação']
-        self.comprovacao_publicacao_2 = dados['Comprovação de publicação ou aceite de publicação (PDF)']
-        self.titulo_publicacao_3 = dados['Título da publicação']
-        self.local_publicacao_3 = dados['Local de publicação']
-        self.tipo_publicacao_3 = dados['Tipo da publicação']
-        self.qualis_publicacao_3 = dados['Qualis do local de publicação']
-        self.comprovacao_publicacao_3 = dados['Comprovação de publicação ou aceite de publicação (PDF)']
-        self.titulo_publicacao_4 = dados['Título da publicação']
-        self.local_publicacao_4 = dados['Local de publicação']
-        self.tipo_publicacao_4 = dados['Tipo da publicação']
-        self.qualis_publicacao_4 = dados['Qualis do local de publicação']
-        self.comprovacao_publicacao_4 = dados['Comprovação de publicação ou aceite de publicação (PDF)']
-        self.titulo_publicacao_5 = dados['Título da publicação']
-        self.local_publicacao_5 = dados['Local de publicação']
-        self.tipo_publicacao_5 = dados['Tipo da publicação']
-        self.qualis_publicacao_5 = dados['Qualis do local de publicação']
-        self.comprovacao_publicacao_5 = dados['Comprovação de publicação ou aceite de publicação (PDF)'] """
         self.curriculo_lattes = dados['Currículo Lattes']
         self.diploma_graduacao = dados['Diploma de graduação OU atestado de conclusão de curso OU atestado de provável formando OU atestado de provável formando indicando que irá concluir o curso até 30 de julho de 2023 no caso de ingresso em 2023/2']
         self.diploma_mestrado = dados['Se aplicável, cópia do diploma de mestrado OU comprovação de cumprimento de todos requisitos para obtenção do diploma OU atestado indicando que irá concluir o seu curso de mestrado até 30 de julho de 2023 no caso de ingresso em 2023/2']
@@ -92,39 +68,80 @@ class Aluno:
         self.ip = dados['IP']
         self.id = dados['ID']
         self.key = dados['Key']
+        self.nota_historico = None
+        self.media_publicacoes = None
         self.media_historico = None
+        self.nota_final = None
         self.publicacoes = []
-        # Adicionar as publicações dinamicamente
         self.adicionar_publicacoes(dados)
+        self.calcular_media_publicacoes()
+
+    def calcular_media_publicacoes(self):
+        """
+        Calcula a média de publicações do aluno com base nas publicações e no tipo de inscrição.
+        """
+        if self.tipo_inscricao.lower() == 'mestrado':
+            publicacoes_consideradas = self.publicacoes[:3]  # Considerar as 3 primeiras publicações
+            divisor = 3
+        elif self.tipo_inscricao.lower() == 'doutorado':
+            publicacoes_consideradas = self.publicacoes[:5]  # Considerar as 5 primeiras publicações
+            divisor = 5
+        else:
+            self.nota_total = 0  # Caso o tipo de inscrição não seja especificado corretamente
+            return
+
+        soma_pontuacoes = sum(publicacao.nota for publicacao in publicacoes_consideradas)
+        self.media_publicacoes = round(soma_pontuacoes / divisor, 2)  # Dividir e arredondar para duas casas decimais
+
+    def calcular_media_historico(self):
+        """
+        Calcula a média do histórico do aluno com base na nota do histórico.
+        """
+        if self.nota_historico <= 5.0:
+            self.media_historico = 0.0
+        else:
+            self.media_historico = self.nota_historico - 5.0
+
+        self.media_historico = round(self.media_historico, 2)  # Arredondar para duas casas decimais
+
+    def calcular_nota_final(self):
+        """
+        Calcula a nota final.
+        """
+        self.nota_final = self.media_historico + self.media_publicacoes
 
     def adicionar_publicacoes(self, dados):
-        # Método para adicionar publicações dinamicamente
+    # Método para adicionar publicações dinamicamente
         for chave, valor in dados.items():
-            if chave.startswith('Título da publicação'):
-                # Extrai o número da coluna a partir do título da publicação
-                num = chave.split(' ')[-1]
+            
+            if chave.startswith('Título da publicação') and valor:
                 # Monta as chaves para os outros campos da publicação
-                local_chave = f'Local de publicação {num}'
-                tipo_chave = f'Tipo da publicação {num}'
-                qualis_chave = f'Qualis do local de publicação {num}'
-                comprovacao_chave = f'Comprovação de publicação ou aceite de publicação {num} (PDF)'
+                local_chave = f'Local de publicação'
+                tipo_chave = f'Tipo da publicação'
+                qualis_chave = f'Qualis do local de publicação'
+                comprovacao_chave = f'Comprovação de publicação ou aceite de publicação (PDF)'
+                primeiro_autor_chave = f'Primeiro autor'
 
                 # Obtém os valores correspondentes aos outros campos da publicação
                 local = dados.get(local_chave, '')
                 tipo = dados.get(tipo_chave, '')
                 qualis = dados.get(qualis_chave, '')
                 comprovacao = dados.get(comprovacao_chave, '')
+                primeiro_autor = dados.get(primeiro_autor_chave, '')
 
-                # Verifica se há um título de publicação (condição obrigatória para adicionar a publicação)
-                if valor:
-                    publicacao = Publicacao({
-                        'Título da publicação': valor,
-                        'Local de publicação': local,
-                        'Tipo da publicação': tipo,
-                        'Qualis do local de publicação': qualis,
-                        'Comprovação de publicação ou aceite de publicação (PDF)': comprovacao
-                    })
-                    self.publicacoes.append(publicacao)
+                # Cria um dicionário para os dados da publicação
+                dados_publicacao = {
+                    'Título da publicação': valor,
+                    'Local de publicação': local,
+                    'Tipo da publicação': tipo,
+                    'Qualis do local de publicação': qualis,
+                    'Comprovação de publicação ou aceite de publicação (PDF)': comprovacao,
+                    'Primeiro autor': primeiro_autor
+                }
+
+                # Cria a instância de Publicacao apenas se houver um título de publicação válido
+                publicacao = Publicacao(dados_publicacao)
+                self.publicacoes.append(publicacao)
 
     def baixar_arquivos(self):
         """
@@ -178,11 +195,11 @@ class Aluno:
         Cada objeto Aluno representa uma linha do CSV.
         """
         dados_alunos = []
-        with open(nome_arquivo, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                aluno = Aluno(row)
-                dados_alunos.append(aluno)
+        df = pd.read_csv(nome_arquivo, encoding='utf-8')
+
+        for index, row in df.iterrows():
+            aluno = Aluno(row)
+            dados_alunos.append(aluno)
         return dados_alunos
 
     @staticmethod
