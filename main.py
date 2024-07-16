@@ -32,7 +32,7 @@ for aluno in alunos:
     aluno.calcular_media_historico()
     aluno.calcular_nota_final()
     
-    # aluno.baixar_arquivos()
+    aluno.baixar_arquivos()
 
 # Separar e ordenar os alunos de mestrado e doutorado
 alunos_mestrado = [aluno for aluno in alunos if aluno.tipo_inscricao.lower() == 'mestrado']
