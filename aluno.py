@@ -69,6 +69,7 @@ class Aluno:
         self.id = dados['ID']
         self.key = dados['Key']
         self.nota_historico = None
+        self.media_projeto_doutorado = None
         self.media_publicacoes = None
         self.media_historico = None
         self.nota_final = None
@@ -108,7 +109,23 @@ class Aluno:
         """
         Calcula a nota final.
         """
-        self.nota_final = self.media_historico + self.media_publicacoes
+        if self.tipo_inscricao.lower() == 'mestrado':
+            self.nota_final = round((self.media_historico + self.media_publicacoes) / 2, 2)
+        elif self.tipo_inscricao.lower() == 'doutorado':
+            # Nota final para doutorado: soma ponderada das médias histórico, publicações e projeto de doutorado
+            peso_desempenho_academico = 2
+            peso_publicacoes = 5
+            peso_projeto_entrevista = 3
+
+            # Calcular a nota final ponderada
+            self.nota_final = round((
+                (self.media_historico * peso_desempenho_academico) +
+                (self.media_publicacoes * peso_publicacoes) +
+                (self.media_projeto_doutorado * peso_projeto_entrevista)
+                ) / (peso_desempenho_academico + peso_publicacoes + peso_projeto_entrevista), 2)
+        else:
+            self.nota_final = 0
+            return
 
     def adicionar_publicacoes(self, dados):
     # Método para adicionar publicações dinamicamente
@@ -203,7 +220,7 @@ class Aluno:
         return dados_alunos
 
     @staticmethod
-    def ler_csv_medias(nome_arquivo_medias):
+    def ler_csv_historico(nome_arquivo_medias):
         # Método para ler o segundo arquivo CSV de médias
         medias = {}
         with open(nome_arquivo_medias, 'r', encoding='utf-8') as csvfile:
@@ -215,3 +232,48 @@ class Aluno:
                 chave = (nome_completo, cpf)
                 medias[chave] = media
         return medias
+    
+    @staticmethod
+    def ler_csv_projeto(nome_arquivo):
+        # Método para ler o terceiro arquivo CSV de notas dos projetos de doutorado
+        notas_projetos_doutorado = {}
+        with open(nome_arquivo, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                nome_completo = row['Nome Completo']
+                cpf = row['CPF']
+                
+                # Calcular a média das notas do Projeto de Doutorado
+                notas_projeto = [
+                    float(row['Nota Projeto 1']),
+                    float(row['Nota Projeto 2']),
+                    float(row['Nota Projeto 3'])
+                ]
+                media_projeto = sum(notas_projeto) / len(notas_projeto)
+                
+                # Calcular a média das notas do Memorial Acadêmico
+                notas_memorial = [
+                    float(row['Nota Memorial 1']),
+                    float(row['Nota Memorial 2']),
+                    float(row['Nota Memorial 3'])
+                ]
+                media_memorial = sum(notas_memorial) / len(notas_memorial)
+                
+                # Calcular a média das notas da Entrevista
+                notas_entrevista = [
+                    float(row['Nota Entrevista 1']),
+                    float(row['Nota Entrevista 2']),
+                    float(row['Nota Entrevista 3'])
+                ]
+                media_entrevista = sum(notas_entrevista) / len(notas_entrevista)
+                
+
+                media_final = (media_projeto + media_memorial + media_entrevista) / 3
+
+                # Chave do dicionário
+                chave = (nome_completo, cpf)
+                
+                # Adicionar as médias ao dicionário
+                notas_projetos_doutorado[chave] = round(media_final / 2, 2)
+    
+        return notas_projetos_doutorado
